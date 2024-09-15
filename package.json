@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node index.js",
     "mon": "nodemon index.js",
+    "debug":"node --inspect index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Brandon Quintero",
