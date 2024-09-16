@@ -12,8 +12,7 @@ class EncargadoControllers {
         res
           .status(500)
           .json({ error: "Erro al obtener datos", err: error.message });
-      })
-      .finally(() => next());
+      });
   }
 
   postEncargado(req, res, next) {
@@ -22,16 +21,14 @@ class EncargadoControllers {
       .save()
       .then((result) => res.status(200).json(result))
       .catch((error) => {
-        console.log(error);
+        error;
 
         if (error.code === 11000) {
           if (error.keyPattern.documento) {
-            res
-              .status(409)
-              .json({
-                error: "Este documento ya se encuentra registrado",
-                err: error,
-              });
+            res.status(409).json({
+              error: "Este documento ya se encuentra registrado",
+              err: error,
+            });
           } else {
             res
               .status(500)
@@ -42,8 +39,7 @@ class EncargadoControllers {
             .status(500)
             .json({ error: "Error al insertar Encargado ", err: error });
         }
-      })
-      .finally(() => next());
+      });
   }
 
   async getIdEncargado(req, res, next) {
@@ -58,9 +54,7 @@ class EncargadoControllers {
         res.status(404).send("No se encontro nada en el ID ingresado");
       }
     } catch (error) {
-      console.log("error" + error);
-    } finally {
-      next();
+      "error" + error;
     }
   }
 
@@ -90,9 +84,7 @@ class EncargadoControllers {
         res.status(500).json({ error: "Error al actualizar documento" });
       }
     } catch (error) {
-      console.log(error);
-    } finally {
-      next();
+      error;
     }
   }
 
@@ -103,7 +95,7 @@ class EncargadoControllers {
       const reference = await InmuebleModels.find({
         id_encargado: new ObjectId(id),
       });
-      console.log(reference);
+      reference;
       if (reference.length > 0) {
         res.status(409).send({
           error:
@@ -125,8 +117,6 @@ class EncargadoControllers {
       res
         .status(500)
         .send({ error: "Error interno del servidor", err: error.message });
-    } finally {
-      next();
     }
   }
 }

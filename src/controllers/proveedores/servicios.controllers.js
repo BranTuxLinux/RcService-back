@@ -14,9 +14,7 @@ class ServiciosController {
 
       res.status(200).send(result);
     } catch (error) {
-      console.log(error);
-    } finally {
-      next();
+      error;
     }
   }
 
@@ -30,9 +28,7 @@ class ServiciosController {
 
       res.status(200).send(result);
     } catch (error) {
-      console.log("Error: " + error);
-    } finally {
-      next();
+      "Error: " + error;
     }
   }
 
@@ -54,11 +50,9 @@ class ServiciosController {
           error: "El nombre del servicio ya esta en uso",
         });
       } else {
-        console.log(error);
+        error;
         res.status(500).json({ error: "Error al crear el documento" });
       }
-    } finally {
-      next();
     }
   }
 
@@ -74,13 +68,13 @@ class ServiciosController {
       });
 
       if (categoria.estado) {
-        console.log("entro");
+        ("entro");
         const result = await ServicioModels.updateOne(
           { _id: new ObjectId(id) },
           Update,
           { new: true }
         );
-        console.log("entro completo");
+        ("entro completo");
         if (result) {
           res
             .status(200)
@@ -89,17 +83,15 @@ class ServiciosController {
           res.status(500).json({ error: "Error al actualizar el documento" });
         }
       } else {
-        console.log("fallo 1");
+        ("fallo 1");
         res.status(400).json({
           error:
             "No puedes activar este servicio ya que la categoría asociada está inactiva.",
         });
       }
     } catch (error) {
-      console.log(error);
-      console.log("fallo 2");
-    } finally {
-      next();
+      error;
+      ("fallo 2");
     }
   }
 
@@ -113,7 +105,7 @@ class ServiciosController {
         id_service: new ObjectId(id),
       });
 
-      console.log(reference);
+      reference;
 
       if (reference.length > 0) {
         res.status(500).send({
@@ -132,10 +124,8 @@ class ServiciosController {
         }
       }
     } catch (error) {
-      console.log("Error al eliminar el servicio -> " + error.message);
+      "Error al eliminar el servicio -> " + error.message;
       res.status(500).send({ error: "Error.", err: error.message });
-    } finally {
-      next();
     }
   }
 }

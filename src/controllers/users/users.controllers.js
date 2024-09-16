@@ -1,23 +1,138 @@
+const { transporter } = require("../../libs/emailConfig.js");
 const { ObjectId } = require("mongodb");
 const { UserModel } = require("../../models/Users/users.models.js");
 const jwt = require("jsonwebtoken");
 const bycrypt = require("bcrypt");
-const { CreateAccess } = require("../../libs/jwt.js");
+const {
+  CreateAccess,
+  CreateConfirmToken,
+  GetConfirmToken,
+} = require("../../libs/jwt.js");
 const {
   ProveedoresModels,
 } = require("../../models/Proveedores/provedores.models.js");
+const { Employed_Model } = require("../../models/Users/employed.models.js");
+const {
+  TemplateEmail,
+  SendEmail,
+  NotificationTemplate,
+} = require("../../tools/template.tools.js");
+const { EncodeToken, DecodeToken } = require("../../tools/encode.tools.js");
+
+const CorreoConfirmacion = async (userEmail) => {
+  try {
+    const mailOptions = {
+      from: transporter.senderEmail,
+      to: userEmail,
+      subject: "Bienvenido a la aplicación",
+      html: `
+      <!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Correo de Bienvenido</title>
+</head>
+<body style="font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: #ffffff; color: #000000; text-align: center;">
+    <div id="email___content" style="max-width: 600px; margin: 40px auto; padding: 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.1); border-radius: 8px; border: 1px solid #d1d9e6;">
+    <img src="https://rcservice.onrender.com/api/img/LogoRc.png" alt="Rc service Logo" style="max-width: 100px; height: 100px; display: block; margin: 0 auto 20px; border-radius: 50%; background: radial-gradient(black 60%, transparent 60%);">
+    <h2 style="color: #333; font-size: 24px; margin-bottom: 10px;">Bienvenido a nuestra aplicación</h2>
+        <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">Gracias por registrarte. Estamos emocionados de tenerte a bordo.</p>
+        
+        <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">¡Esperamos que disfrutes de tu experiencia!</p>
+        </div>
+        </body>
+      </html>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    ("Correo enviado correctamente");
+  } catch (error) {
+    console.error("Error al enviar el correo: ", error);
+  }
+};
+
+const CorreoConfirmacionEmpleado = async (userEmail, password) => {
+  try {
+    const mailOptions = {
+      from: transporter.senderEmail,
+      to: userEmail,
+      subject: "Bienvenido a la aplicación",
+      html: `
+      <!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+</head>
+<body style="font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: #ffffff; color: #000000; text-align: center;">
+    <div id="email___content" style="max-width: 600px; margin: 40px auto; padding: 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.1); border-radius: 8px; border: 1px solid #d1d9e6;">
+<img src="https://rcservice.onrender.com/api/img/LogoRc.png" alt="Rc service Logo" style="max-width: 100px; height: 100px; display: block; margin: 0 auto 20px; border-radius: 50%; background: radial-gradient(black 60%, transparent 60%);">
+      <h1 style="color: #333; font-size: 24px; margin-bottom: 10px;>Bienvenido a nuestra aplicación como rol Empleado</h1>
+      <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">Estamos emocionados de tenerte a bordo, tu usuario y contraseña, asignados son los siguientes: </p>
+      <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">Usuario: ${userEmail}</p>
+      <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">Contraseña: ${password}</p>
+      
+      <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">¡Esperamos que tengas una excelente experiencia como Empleado!</p>
+      </div>
+  </body>
+</html>
+    `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    ("Correo enviado correctamente");
+  } catch (error) {
+    console.error("Error al enviar el correo: ", error);
+  }
+};
+
 class User_Controller {
   Get(req, res, next) {
     UserModel.find({})
       .populate("roleRef")
+      .then((users) => {
+        const populatedUsers = users.map((user) => {
+          if (
+            user.role === "Proveedores" &&
+            user.roleRef &&
+            user.roleRef.categoriaServicio
+          ) {
+            return UserModel.populate(user, {
+              path: "roleRef.categoriaServicio",
+            });
+          } else {
+            return user;
+          }
+        });
+
+        return Promise.all(populatedUsers);
+      })
       .then((result) => {
-        res.status(200).send(result);
+        return res.status(200).send(result);
       })
       .catch((error) => {
-        res.status(500).json({ error: "Error al obtener el permiso" });
-      })
-      .finally(() => next());
+        return res.status(500).json({ error: error.message });
+      });
   }
+
+  // Get_proveedores(req, res, next) {
+  //   UserModel.find({ role: "Proveedores" })
+  //     .populate({
+  //       path: "roleRef",
+  //       populate: { path: "categoriaServicio" },
+  //     })
+  //     .then((result) => {
+  //       res.status(200).send(result);
+  //     })
+  //     .catch((error) => {
+  //       console.error(error);
+  //       res.status(500).json({ error: error });
+  //     })
+  //     .finally(() => next());
+  // }
 
   // //__________________________________________________________________________________________
 
@@ -31,37 +146,80 @@ class User_Controller {
 
       res.status(200).send(result);
     } catch (error) {
-      console.log("Error: " + error);
+      "Error: " + error;
       res.status(500).json({ error: "Error al obtener el usuario" });
-    } finally {
-      next();
     }
   }
 
   //__________________________________________________________________________________________
 
-  async Post(req, res, next) {
-    const { email, password, role, roleRef } = req.body;
+  async PostEmployed(req, res, next) {
+    const { nombre, documento, telefono, direccion, password, email, estado } =
+      req.body;
+
     try {
-      const passwordHash = await bycrypt.hash(password, 10);
-      const result = new UserModel({
+      console.log(req.body);
+      const veri_user = await UserModel.findOne({
+        $or: [{ email: email }, { documento: documento }],
+      });
+      if (veri_user) {
+        console.log("pasoeamil");
+        console.log(veri_user);
+        if (veri_user.email == email)
+          return res
+            .status(400)
+            .json({ message: "Ya hay un usuario con ese correo..." });
+        if (veri_user.documento == documento)
+          return res
+            .status(400)
+            .json({ message: "Ya hay un usuario con ese documento..." });
+      }
+      console.log("paso");
+
+      //Guarda la contraseña sin encriptar
+      const passwordPlain = password;
+      let passwordHash;
+
+      if (passwordPlain) {
+        passwordHash = await bycrypt.hash(passwordPlain, 10);
+      } else {
+        // Manejar el caso en el que passwordPlain es undefined o null
+        return res
+          .status(400)
+          .json({ message: "La contraseña es obligatoria." });
+      }
+
+      const employed = new Employed_Model({
+        nombre,
+        documento,
+        telefono,
+        direccion,
+      });
+      const employed_created = await employed.save();
+
+      if (!employed_created)
+        return res.status(400).send("error al crear empleado");
+
+      const user = UserModel({
         email,
         password: passwordHash,
-        role,
-        roleRef,
+        role: "Employed",
+        roleRef: new ObjectId(employed_created._id),
+        estado,
       });
-      const user = await result.save();
+      const user_created = await user.save();
 
-      if (!user) return res.status(400).send("hubo algún error");
+      if (!user_created) return res.status(400).send("hubo algún error");
+      CorreoConfirmacionEmpleado(user_created.email, passwordPlain);
+
       res.status(201).json({
         message: "GOOD",
-        User: user,
+        Employed: employed_created,
+        User: user_created,
       });
     } catch (error) {
       console.log(error);
-      res.status(500).send(error);
-    } finally {
-      next();
+      res.status(500).json({ message: "Error desconocido", error });
     }
   }
 
@@ -69,22 +227,66 @@ class User_Controller {
 
   async Put(req, res, next) {
     const id = req.params.id;
-
+    console.log(req.body)
+      
     try {
-      const result = await UserModel.findOneAndUpdate(
+      const result = await UserModel.findOne({ _id: new ObjectId(id) });
+
+      const providerUpdated = await UserModel.findOneAndUpdate(
         { _id: new ObjectId(id) },
         req.body,
         { new: true }
       );
-      if (result) {
-        res.status(200).json({ message: "Permiso actualizado ", result });
+      console.log(providerUpdated);
+      res
+        .status(200)
+        .json({ message: "actualizado con éxito", User: providerUpdated });
+      if (result.role == "Proveedores") {
+      } else if (result.role == "Employed") {
+        const employedUpdated = await UserModel.findOneAndUpdate(
+          { _id: new ObjectId(result.roleRef) },
+          req.body,
+          { new: true }
+        );
+        res
+          .status(200)
+          .json({ message: "actualizado con éxito", User: employedUpdated });
       } else {
-        res.status(500).json({ error: "Error al actualizar" });
+        res.status(404).json({ message: "Rol indefinido" });
       }
-    } catch (error) {
-      console.log(error);
-    } finally {
-      next();
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Ha ocurrido un error.", error: err });
+    }
+  }
+  async PutStateProvider(req, res, next) {
+    const id = req.params.id;
+    const { role } = req.body;
+    try {
+      const providerUpdated = await UserModel.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        { estado },
+        { new: true }
+      );
+      if (estado) {
+        await SendEmail(
+          providerUpdated.email,
+          "Haz sido Habilitado.",
+          NotificationTemplate(providerUpdated.email, `Has sido Habilitado `)
+        );
+      } else {
+        await SendEmail(
+          providerUpdated.email,
+          "Haz sido Inabilitado.",
+          NotificationTemplate(providerUpdated.email, `Has sido Inhabilitado `)
+        );
+      }
+      res
+        .status(200)
+        .json({ message: "actualizado con éxito", User: providerUpdated });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Ha ocurrido un error.", error: err });
     }
   }
 
@@ -98,7 +300,7 @@ class User_Controller {
         _id: new ObjectId(id),
       });
 
-      if (result) {
+      if (userDeleted) {
         res.status(200).send({ message: "Usuario borrado con éxito" });
       } else {
         res.status(404).send({ error: "Usuario no encontrado" });
@@ -108,8 +310,6 @@ class User_Controller {
       res
         .status(500)
         .send({ error: "Error interno del servidor", err: error.message });
-    } finally {
-      next();
     }
   }
   // LOGIN
@@ -121,7 +321,11 @@ class User_Controller {
         "roleRef"
       );
       if (!Usuario) return res.status(404).send("El usuario no existe");
-
+      if (Usuario.role == "Employed" && Usuario.estado == false) {
+        return res
+          .status(400)
+          .json({ response: "Este usuario esta inhabilitado." });
+      }
       const Coincide = await bycrypt.compare(password, Usuario.password);
 
       if (!Coincide) {
@@ -131,7 +335,7 @@ class User_Controller {
       }
 
       const Token = await CreateAccess({ id: Usuario._id });
-      console.log(Token);
+      Token;
       res.cookie("token", Token, {
         sameSite: "none",
         secure: true,
@@ -140,41 +344,189 @@ class User_Controller {
         .status(200)
         .json({ message: "Bienvenido", result: Usuario, token: Token });
     } catch (error) {
-      console.log(error);
+      error;
       res.status(500).json({ message: "Bad", error });
-    } finally {
-      next();
     }
   }
   Logout(req, res, next) {
     res.cookie("token", "", { expires: new Date(0) });
     res.status(200).send("Sesión Cerrada");
-    next();
   }
   async registerVerify(req, res, next) {
-    const { email } = req.body;
     try {
+      const { email, password } = req.body;
       const verifyUser = await UserModel.findOne({ email: email });
       if (verifyUser)
         return res
           .status(409)
           .json({ message: "El usuario ya esta registrado" });
+
+      const randomNumber = Math.floor(Math.random() * 9000) + 1000;
+      const tokenCode = await CreateConfirmToken({
+        code: randomNumber,
+        email: email,
+        password,
+      });
+      tokenCode;
+      if (!tokenCode) {
+        res.status(500).json({ message: "Error al crear token de acceso" });
+      }
+      const tok = EncodeToken(tokenCode);
+      ("con encode");
+      tok;
+      const template = TemplateEmail(
+        email,
+        "Para confirmar tu cuenta, ingresa al siguiente enlace",
+        tok
+      );
+      SendEmail(email, "Confirmacion de correo", template);
       res.status(200).json({ message: "Continuando con el registro" });
     } catch (error) {
+      error;
+      res.status(500).json({ message: "A ocurrido un error", error });
+    }
+  }
+  async VerifyConfirmToken(req, res, next) {
+    ("Verificando paso...");
+    const { token } = req.params;
+    try {
+      const tokenDecode = DecodeToken(token);
+      tokenDecode;
+      ("arriba ");
+      const confirmed = await GetConfirmToken(tokenDecode);
+      confirmed;
+      if (!confirmed) {
+        return res
+          .status(400)
+          .json({ message: "No fue confirmado", error: confirmed });
+      }
+      return res
+        .status(200)
+        .json({ message: "Continuando con el registro", data: confirmed });
+    } catch (error) {
+      return res.status(500).json({ message: "A ocurrido un error", error });
+    }
+  }
+  async CreateCodeToken(req, res, next) {
+    const { email } = req.body;
+    try {
+      const response_user = await UserModel.findOne({ email });
+      if (!response_user)
+        return res.status(400).json({
+          message: "El E-mail ingresado no existe en el aplicativo",
+          error: response_user,
+        });
+
+      const randomNumber = String(Math.floor(Math.random() * 9000) + 1000);
+      randomNumber;
+
+      const key = await bycrypt.hash(randomNumber, 10);
+      key;
+
+      const keyToken = await CreateConfirmToken({ key, email });
+      ("mira");
+
+      const template = await TemplateEmail(
+        email,
+        `Código de verificación de recuperación de contraseña es: <strong>${randomNumber}</strong>`,
+        EncodeToken(keyToken),
+        "recuperar_correo/"
+      );
+      await SendEmail(
+        email,
+        "Código de verificación contraseña",
+        template,
+        "recuperar_correo/"
+      );
+
+      return res
+        .status(200)
+        .json({ message: "Continuando con el cambio de contraseña" });
+    } catch (error) {
+      error;
+      return res.status(500).json({ message: "A ocurrido un error", error });
+    }
+  }
+
+  async VerifyCodeToken(req, res) {
+    try {
+      const { tokenKey } = req.params;
+      const { code } = req.body;
+
+      const isConfirmed = await GetConfirmToken(DecodeToken(tokenKey));
+      isConfirmed;
+      if (!isConfirmed)
+        return res
+          .status(400)
+          .json({ message: "Error del Token", error: isConfirmed });
+
+      const codeIsConfirmed = await bycrypt.compare(code, isConfirmed.key);
+      codeIsConfirmed;
+      if (!codeIsConfirmed)
+        return res.status(400).json({
+          message: "El codigo ingresado es invalido",
+          error: codeIsConfirmed,
+        });
+
+      ("all right");
+
+      //Devuelvo el email
+      res.status(200).json({
+        message: "Continuando con el cambio de contraseña",
+        email: isConfirmed.email,
+      });
+    } catch (error) {
+      error;
+      res.status(500).json({ message: "A ocurrido un error", error });
+    }
+  }
+  async UpdatePassword(req, res) {
+    try {
+      const { email, password } = req.body;
+      const passwordHash = await bycrypt.hash(password, 10);
+      const response_user = await UserModel.findOneAndUpdate(
+        { email },
+        { password: passwordHash },
+        { new: true }
+      );
+      response_user;
+      if (!response_user) {
+        return res
+          .status(400)
+          .json({ message: "Error al actualizar", error: email });
+      }
+
+      SendEmail(
+        email,
+        "Cambio de contrasena",
+        NotificationTemplate(email, "Contrasena actualizada con exito.")
+      );
+      res.status(200).json({ message: "actualizado con éxito." });
+    } catch (error) {
+      error;
       res.status(500).json({ message: "A ocurrido un error", error });
     }
   }
   async register(req, res, next) {
-    const { nombre, documento, email, password, direccion, telefono } =
-      req.body;
+    const {
+      nombre,
+      documento,
+      email,
+      password,
+      direccion,
+      telefono,
+      categoriaServicio,
+    } = req.body;
+    req.body;
     try {
       const passwordHash = await bycrypt.hash(password, 10);
+      passwordHash;
 
       const comprobando = await ProveedoresModels.findOne({
         documento: documento,
       });
       if (comprobando) {
-        console.log(comprobando);
+        comprobando;
         return res.status(409).json({
           message: "Documento ya se encuentra en la base de datos",
           error: comprobando,
@@ -191,6 +543,7 @@ class User_Controller {
         documento,
         direccion,
         telefono,
+        categoriaServicio,
       });
 
       const saveProvider = await provider.save();
@@ -207,7 +560,8 @@ class User_Controller {
         roleRef: saveProvider._id,
       });
       const saveUser = await newUser.save();
-      console.log(saveUser);
+      saveUser;
+
       const Token = await CreateAccess({ id: saveUser._id });
       res.cookie("token", Token, {
         sameSite: "none",
@@ -215,6 +569,7 @@ class User_Controller {
         httpOnly: true,
       });
 
+      CorreoConfirmacion(saveUser.email);
       res.status(200).json({
         message: "Usuario Registrado",
         user: {
@@ -225,20 +580,18 @@ class User_Controller {
         token: Token,
       });
     } catch (error) {
-      console.log(error);
+      error;
       return res.status(500).json({
         message: "A ocurrido un error",
         error: error,
       });
-    } finally {
-      next();
     }
   }
   async VerifyToken(req, res, next) {
     try {
       const { token } = req.cookies;
-      console.log(req.cookie);
-      console.log("Estamos verificando el token: " + token);
+      req.cookie;
+      "Estamos verificando el token: " + token;
       if (!token)
         return res.status(400).json({ message: "Acceso no autorizado" });
 
@@ -250,15 +603,24 @@ class User_Controller {
 
       const user = await UserModel.findById({
         _id: new ObjectId(verify.id),
-      }).populate("roleRef");
+      }).populate({
+        path: "roleRef",
+      });
+      let provider = null;
       if (!user)
         return res.status(400).json({
           message:
             "Acceso no autorizado, Verificación no hace referencia a ningún usuario ",
         });
-      console.log("🐱‍👤 por aqui");
+      if (user.role == "Proveedores") {
+        provider = await ProveedoresModels.findById({
+          _id: new ObjectId(user.roleRef._id),
+        })
+          .populate("categoriaServicio")
+          .populate("id_calificacion");
+      }
       console.log(user);
-      return res.status(200).json({
+      const forJson = {
         id: user._id,
         id_provider: user.roleRef._id,
         email: user.email,
@@ -267,19 +629,23 @@ class User_Controller {
         cc: user.roleRef.documento,
         phone: user.roleRef.telefono,
         direction: user.roleRef.direccion,
-        score: user.roleRef.id_calificacion,
-      });
+        isConfirmed: user.estado,
+        isContracted: user.status,
+      };
+      if (user.role == "Proveedores") {
+        forJson.score = provider.id_calificacion;
+        forJson.category = provider ? provider.categoriaServicio : "";
+      }
+      return res.status(200).json(forJson);
     } catch (error) {
-      console.log(error);
+      error;
       res.status(500).json({ message: "Bad", error });
-    } finally {
-      next();
     }
   }
   async VerifyTokenMobile(req, res, next) {
     const { token } = req.body;
     try {
-      console.log("Estamos verificando el token: " + token);
+      "Estamos verificando el token: " + token;
       if (!token) return res.status(400).json({ message: "Unauthorized 1" });
 
       const verify = await jwt.verify(token, process.env.SECRET_KEY);
@@ -287,11 +653,12 @@ class User_Controller {
 
       const user = await UserModel.findById({
         _id: new ObjectId(verify.id),
-      }).populate("roleRef");
+      }).populate({ path: "roleRef", populate: { path: "id_calificacion" } });
       if (!user) return res.status(400).json({ message: "Unauthorized 3" });
 
       return res.status(200).json({
         id: user._id,
+        id_provider: user.roleRef._id,
         email: user.email,
         name: user.roleRef.nombre,
         cc: user.roleRef.documento,
@@ -301,10 +668,8 @@ class User_Controller {
         score: user.roleRef.id_calificacion,
       });
     } catch (error) {
-      console.log(error);
+      error;
       res.status(500).json({ message: "Bad", error });
-    } finally {
-      next();
     }
   }
 }
