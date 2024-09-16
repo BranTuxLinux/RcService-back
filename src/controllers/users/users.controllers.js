@@ -158,26 +158,36 @@ class User_Controller {
       req.body;
 
     try {
-      console.log(req.body)
-      const veri_user = await UserModel.findOne({$or: [{ email: email }, { documento: documento }]})
+      console.log(req.body);
+      const veri_user = await UserModel.findOne({
+        $or: [{ email: email }, { documento: documento }],
+      });
       if (veri_user) {
-        console.log("pasoeamil")
-        console.log(veri_user)
-        if(veri_user.email == email) return  res.status(400).json({message:'Ya hay un usuario con ese correo...'})
-        if(veri_user.documento == documento )return res.status(400).json({message:'Ya hay un usuario con ese documento...'})
+        console.log("pasoeamil");
+        console.log(veri_user);
+        if (veri_user.email == email)
+          return res
+            .status(400)
+            .json({ message: "Ya hay un usuario con ese correo..." });
+        if (veri_user.documento == documento)
+          return res
+            .status(400)
+            .json({ message: "Ya hay un usuario con ese documento..." });
       }
-    console.log("paso")
+      console.log("paso");
 
       //Guarda la contraseña sin encriptar
       const passwordPlain = password;
-let passwordHash;
+      let passwordHash;
 
-if (passwordPlain) {
-  passwordHash = await bycrypt.hash(passwordPlain, 10);
-} else {
-  // Manejar el caso en el que passwordPlain es undefined o null
-  return res.status(400).json({ message: 'La contraseña es obligatoria.' });
-}
+      if (passwordPlain) {
+        passwordHash = await bycrypt.hash(passwordPlain, 10);
+      } else {
+        // Manejar el caso en el que passwordPlain es undefined o null
+        return res
+          .status(400)
+          .json({ message: "La contraseña es obligatoria." });
+      }
 
       const employed = new Employed_Model({
         nombre,
@@ -208,8 +218,8 @@ if (passwordPlain) {
         User: user_created,
       });
     } catch (error) {
-      console.log(error)
-      res.status(500).json({message: 'Error desconocido',error});
+      console.log(error);
+      res.status(500).json({ message: "Error desconocido", error });
     }
   }
 
@@ -217,24 +227,25 @@ if (passwordPlain) {
 
   async Put(req, res, next) {
     const id = req.params.id;
-    const { nombre, documento, direccion, telefono, categoriaServicio } =
-      req.body;
+    console.log(req.body)
+      
     try {
       const result = await UserModel.findOne({ _id: new ObjectId(id) });
 
+      const providerUpdated = await UserModel.findOneAndUpdate(
+        { _id: new ObjectId(id) },
+        req.body,
+        { new: true }
+      );
+      console.log(providerUpdated);
+      res
+        .status(200)
+        .json({ message: "actualizado con éxito", User: providerUpdated });
       if (result.role == "Proveedores") {
-        const providerUpdated = await ProveedoresModels.findOneAndUpdate(
-          { _id: new ObjectId(result.roleRef) },
-          { nombre, documento, direccion, telefono, categoriaServicio },
-          { new: true }
-        );
-        res
-          .status(200)
-          .json({ message: "actualizado con éxito", User: providerUpdated });
       } else if (result.role == "Employed") {
-        const employedUpdated = await Employed_Model.findOneAndUpdate(
+        const employedUpdated = await UserModel.findOneAndUpdate(
           { _id: new ObjectId(result.roleRef) },
-          { nombre, documento, direccion, telefono },
+          req.body,
           { new: true }
         );
         res
@@ -244,13 +255,13 @@ if (passwordPlain) {
         res.status(404).json({ message: "Rol indefinido" });
       }
     } catch (err) {
-      err;
+      console.log(err);
       res.status(500).json({ message: "Ha ocurrido un error.", error: err });
     }
   }
   async PutStateProvider(req, res, next) {
     const id = req.params.id;
-    const { estado } = req.body;
+    const { role } = req.body;
     try {
       const providerUpdated = await UserModel.findOneAndUpdate(
         { _id: new ObjectId(id) },
@@ -289,7 +300,7 @@ if (passwordPlain) {
         _id: new ObjectId(id),
       });
 
-      if (result) {
+      if (userDeleted) {
         res.status(200).send({ message: "Usuario borrado con éxito" });
       } else {
         res.status(404).send({ error: "Usuario no encontrado" });
