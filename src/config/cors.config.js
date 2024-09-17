@@ -1,8 +1,7 @@
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://hoppscotch.io",
+  "https://rcservice-front.netlify.app/",
   "http://localhost:19006",
-  "https://657ca922c7a0a526e6939e11--aesthetic-manatee-1a0ece.netlify.app",
 ];
 const CORSConfiguration = {
   origin: allowedOrigins,
